@@ -23,15 +23,17 @@
             </TransformGroup>
         </Grid.RenderTransform>
 
+        <!-- Shadow drawn once and cached, not recomputed on every animation frame -->
         <Border x:Name="Shadow" CornerRadius="20" Background="#F2141519">
+            <Border.CacheMode><BitmapCache RenderAtScale="1"/></Border.CacheMode>
             <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="8" Direction="270" Opacity="0.5" Color="#000000"/></Border.Effect>
         </Border>
 
         <Grid x:Name="Card" Width="404">
-            <!-- Blurred artwork backdrop -->
-            <Rectangle x:Name="Backdrop" Opacity="0.6" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+            <!-- Blurred artwork backdrop: a tiny copy of the art scaled up smoothly (no live blur effect) -->
+            <Rectangle x:Name="Backdrop" Opacity="0.6" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False"
+                       RenderOptions.BitmapScalingMode="Linear">
                 <Rectangle.RenderTransform><ScaleTransform ScaleX="1.35" ScaleY="1.6"/></Rectangle.RenderTransform>
-                <Rectangle.Effect><BlurEffect Radius="56" RenderingBias="Performance" KernelType="Gaussian"/></Rectangle.Effect>
             </Rectangle>
             <Border>
                 <Border.Background>
@@ -64,6 +66,7 @@
                         <Grid.RenderTransform><ScaleTransform x:Name="ArtScale"/></Grid.RenderTransform>
                         <Border CornerRadius="12" Background="#26FFFFFF">
                             <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.45"/></Border.Effect>
+                            <Border.CacheMode><BitmapCache RenderAtScale="1"/></Border.CacheMode>
                         </Border>
                         <Grid x:Name="ArtClip">
                             <Border x:Name="ArtPlaceholder" Background="#1F2026">

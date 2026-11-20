@@ -10,6 +10,15 @@ static class AppAudio
 {
     public sealed record Session(int Pid, string Exe, string? Aumid, ISimpleAudioVolume Volume, IAudioMeterInformation? Meter);
 
+    static void Release(object? o) { if (o != null && Marshal.IsComObject(o)) try { Marshal.ReleaseComObject(o); } catch { } }
+
+    /// <summary>Frees the COM objects behind a list from <see cref="Sessions"/>.</summary>
+    public static void Release(List<Session> list)
+    {
+        foreach (var s in list) { Release(s.Volume); }
+        list.Clear();
+    }
+
     /// <summary>All audio sessions with a process behind them (system sounds excluded).</summary>
     public static List<Session> Sessions()
     {
@@ -32,9 +41,9 @@ static class AppAudio
                 for (int i = 0; i < n; i++)
                 {
                     sessions.GetSession(i, out var ctl);
-                    if (ctl.IsSystemSoundsSession() == 0) continue; // S_OK means it IS the system sounds session
+                    if (ctl.IsSystemSoundsSession() == 0) { Release(ctl); continue; } // S_OK means it IS the system sounds session
                     ctl.GetProcessId(out uint pid);
-                    if (pid == 0) continue;
+                    if (pid == 0) { Release(ctl); continue; }
                     if (!exeCache.TryGetValue((int)pid, out var id))
                     {
                         var (path, aumid) = Native.ProcessIdentity((int)pid);
@@ -43,9 +52,12 @@ static class AppAudio
                     }
                     list.Add(new Session((int)pid, id.Exe, id.Aumid, (ISimpleAudioVolume)ctl, ctl as IAudioMeterInformation));
                 }
+                Release(sessions); Release(mgr); Release(device);
             }
+            Release(devices);
         }
         catch { /* audio service unavailable */ }
+        finally { Release(en); }
         return list;
     }
 
@@ -56,25 +68,31 @@ static class AppAudio
     /// <summary>The app's volume (0–1) and mute state, or null if it has no audio session.</summary>
     public static (float Level, bool Muted)? GetVolume(AppIdentity app)
     {
-        foreach (var s in Sessions())
+        var all = Sessions();
+        try
         {
-            if (!Belongs(s, app)) continue;
-            try
+            foreach (var s in all)
             {
-                s.Volume.GetMasterVolume(out float v);
-                s.Volume.GetMute(out bool m);
-                return (v, m);
+                if (!Belongs(s, app)) continue;
+                try
+                {
+                    s.Volume.GetMasterVolume(out float v);
+                    s.Volume.GetMute(out bool m);
+                    return (v, m);
+                }
+                catch { }
             }
-            catch { }
+            return null;
         }
-        return null;
+        finally { Release(all); }
     }
 
     public static void SetVolume(AppIdentity app, float level, bool? mute = null)
     {
         var ctx = Guid.Empty;
         level = Math.Clamp(level, 0f, 1f);
-        foreach (var s in Sessions())
+        var all = Sessions();
+        foreach (var s in all)
         {
             if (!Belongs(s, app)) continue;
             try
@@ -84,6 +102,7 @@ static class AppAudio
             }
             catch { }
         }
+        Release(all);
     }
 
     /// <summary>
@@ -93,7 +112,8 @@ static class AppAudio
     public static List<(int Pid, string Exe)> AudibleOutside(IReadOnlyList<AppIdentity> apps)
     {
         var result = new List<(int, string)>();
-        foreach (var s in Sessions())
+        var all = Sessions();
+        foreach (var s in all)
         {
             if (s.Meter == null || string.IsNullOrEmpty(s.Exe)) continue;
             if (apps.Any(a => Belongs(s, a))) continue;
@@ -105,6 +125,7 @@ static class AppAudio
             }
             catch { }
         }
+        Release(all);
         return result;
     }
 

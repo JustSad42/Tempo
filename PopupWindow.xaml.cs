@@ -283,6 +283,7 @@ public partial class PopupWindow : Window
             _tick.Stop();
             Menu.Visibility = MenuShade.Visibility = Visibility.Collapsed;
             Hide();
+            MemoryTrim.Soon();
         };
         RootShift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(top ? -8 : 8, TimeSpan.FromMilliseconds(200)));
         Root.BeginAnimation(OpacityProperty, fade);
@@ -432,12 +433,30 @@ public partial class PopupWindow : Window
         outgoing.BeginAnimation(OpacityProperty, new DoubleAnimation(0, dur));
         if (art != null)
         {
-            var brush = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
-            brush.Freeze();
-            Backdrop.Fill = brush;
+            Backdrop.Fill = BlurredBrush(art);
         }
         else Backdrop.Fill = null;
         ArtPlaceholder.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// A soft, blurred look without a blur effect: shrink the art to a few pixels and let smooth scaling
+    /// stretch it back over the card. Costs nothing per frame (a live blur is expensive, especially without a GPU).
+    /// </summary>
+    static Brush? BlurredBrush(ImageSource art)
+    {
+        try
+        {
+            if (art is not System.Windows.Media.Imaging.BitmapSource bmp || bmp.PixelWidth < 2) return null;
+            var tiny = new System.Windows.Media.Imaging.TransformedBitmap(bmp, new ScaleTransform(10.0 / bmp.PixelWidth, 10.0 / bmp.PixelHeight));
+            var copy = new System.Windows.Media.Imaging.WriteableBitmap(tiny); // materialise so the full-size art isn't kept twice
+            copy.Freeze();
+            var brush = new ImageBrush(copy) { Stretch = Stretch.UniformToFill };
+            RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.Linear);
+            brush.Freeze();
+            return brush;
+        }
+        catch { return null; }
     }
 
     void SetAccent(Color c)

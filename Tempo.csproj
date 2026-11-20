@@ -15,11 +15,18 @@
     <Version>1.1.0</Version>
     <Product>Tempo</Product>
     <Description>Media key controller</Description>
+    <!-- Mostly-idle background app: favour a small footprint over GC throughput. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+    <!-- Precompiled code: the first pop-up doesn't spend CPU compiling. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
     <Using Include="System.IO" />
     <Resource Include="Assets\Tempo.png" />
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
   </ItemGroup>
 
 </Project>

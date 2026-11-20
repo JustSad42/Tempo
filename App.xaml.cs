@@ -55,6 +55,8 @@ public partial class App : Application
             return;
         }
 
+        if (InstanceTag != "" && Environment.GetEnvironmentVariable("TEMPO_RENDER") == "software") // test only
+            System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         bool preview = e.Args.Contains("--preview");
         if (e.Args.Contains("--test-drop-hook") && InstanceTag != "")
         {
@@ -103,7 +105,7 @@ public partial class App : Application
 
         StartHook();
         // Windows silently drops keyboard hooks that ever answer too slowly (e.g. under heavy load); renew it now and then.
-        _rehook = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
+        _rehook = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
         _rehook.Tick += (_, _) => { _hook?.Dispose(); StartHook(); };
         _rehook.Start();
         _hookWatch = new HookWatch(() => _hook == null ? 0 : Interlocked.Read(ref _hook.LastSeen), () =>
@@ -132,10 +134,13 @@ public partial class App : Application
         if (preview) _popup.Flash(PopupAction.None, fromMouse: true);
         else if (!e.Args.Contains("--background")) ShowSettings();
         Log($"Started {(firstRun ? "(first run) " : "")}with {_hub.Sessions.Count} media session(s).");
+        MemoryTrim.Soon(15);
     }
 
     void StartHook()
     {
+        // Test only: measure or preview without touching the keyboard.
+        if (InstanceTag != "" && Environment.GetEnvironmentVariable("TEMPO_NO_HOOK") == "1") return;
         try
         {
             _hook = new MediaKeyHook
@@ -177,14 +182,24 @@ public partial class App : Application
     {
         new Thread(() =>
         {
+            bool playerOpen = false;
+            long nextProcessScan = 0;
             while (true)
             {
                 try
                 {
                     var hub = _hub;
-                    if (hub != null && Settings.PassThroughUnknownPlayers && !hub.TargetPlaying)
-                        _audiblePlayerPid = AppAudio.AudibleOutside(hub.Apps).FirstOrDefault(a => NonReportingPlayers.Contains(a.Exe)).Pid;
-                    else _audiblePlayerPid = 0;
+                    bool wanted = hub != null && Settings.PassThroughUnknownPlayers && !hub.TargetPlaying;
+                    // Listing processes is cheap; querying every audio session is not. Only do the latter
+                    // while one of those players is open (checked every 10 s).
+                    if (wanted && Environment.TickCount64 >= nextProcessScan)
+                    {
+                        nextProcessScan = Environment.TickCount64 + 10_000;
+                        playerOpen = NonReportingPlayers.Any(n => { var ps = Process.GetProcessesByName(n); bool any = ps.Length > 0; foreach (var x in ps) x.Dispose(); return any; });
+                    }
+                    _audiblePlayerPid = wanted && playerOpen
+                        ? AppAudio.AudibleOutside(hub!.Apps).FirstOrDefault(a => NonReportingPlayers.Contains(a.Exe)).Pid
+                        : 0;
                 }
                 catch { _audiblePlayerPid = 0; }
                 Thread.Sleep(1000);
@@ -276,7 +291,7 @@ public partial class App : Application
             _settingsWindow.CheckUpdatesRequested += () => _ = CheckForUpdateAsync(true);
             _settingsWindow.PreviewRequested += () => _popup?.Flash(PopupAction.None, fromMouse: true);
             _settingsWindow.QuitRequested += Quit;
-            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Closed += (_, _) => { _settingsWindow = null; MemoryTrim.Soon(2); };
             _settingsWindow.Show();
         }
         if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
