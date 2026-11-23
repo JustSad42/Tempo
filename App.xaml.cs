@@ -64,6 +64,12 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        if (await RunSupervisorAsync(e.Args)) return;
+
+        // Test only: crash on purpose to check that the supervisor brings Tempo back.
+        if (InstanceTag != "" && int.TryParse(Environment.GetEnvironmentVariable("TEMPO_TEST_CRASH_AFTER"), out int crashAfter) && !e.Args.Contains("--restarted"))
+            new Thread(() => { Thread.Sleep(crashAfter * 1000); System.Runtime.InteropServices.Marshal.ReadInt32(IntPtr.Zero); }) { IsBackground = true }.Start();
+
         Updater.CleanUp();
         _mutex = new Mutex(true, MutexName, out bool firstInstance);
         if (!firstInstance)
@@ -133,7 +139,7 @@ public partial class App : Application
 
         if (preview) _popup.Flash(PopupAction.None, fromMouse: true);
         else if (!e.Args.Contains("--background")) ShowSettings();
-        Log($"Started {(firstRun ? "(first run) " : "")}with {_hub.Sessions.Count} media session(s).");
+        Log($"Started {(firstRun ? "(first run) " : "")}{(e.Args.Contains("--restarted") ? "(restarted after a crash) " : "")}with {_hub.Sessions.Count} media session(s).");
         MemoryTrim.Soon(15);
     }
 
