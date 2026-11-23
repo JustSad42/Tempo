@@ -12,7 +12,7 @@
     <RootNamespace>Tempo</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Tempo.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Product>Tempo</Product>
     <Description>Media key controller</Description>
     <!-- Mostly-idle background app: favour a small footprint over GC throughput. -->
