@@ -2,6 +2,8 @@
 
 Better media keys for Windows 11. Tempo runs silently in the background (no window, no tray icon) and takes over your keyboard's media keys, so they control the app that's **actually playing**, not whichever paused tab Windows happens to pick. The Windows media flyout is replaced by a small pop-up that shows briefly on each key press.
 
+<p align="center"><img src="docs/screenshots/popup.png" width="560" alt="Tempo pop-up showing the playing track"></p>
+
 ## What the keys do
 
 | Key | Tap | Hold | Double-tap |
@@ -17,6 +19,12 @@ Better media keys for Windows 11. Tempo runs silently in the background (no wind
 - One icon per app with media: click to switch
 - Click the artwork to open the app, the copy button to copy "Artist – Title"
 - Right-click: open app, copy song name, prefer this app, hide pop-ups for an hour, settings
+
+| Click an app's icon to switch | Pick which apps get the keys | Recently played and stats |
+| --- | --- | --- |
+| ![Pop-up switched to a paused browser tab](docs/screenshots/switch-app.png) | ![Settings: apps the keys can control](docs/screenshots/settings-apps.png) | ![Settings: recently played and stats](docs/screenshots/history-stats.png) |
+
+<sub>Screenshots use made-up tracks.</sub>
 
 ## Which app gets the keys
 
