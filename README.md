@@ -43,8 +43,32 @@ Players that don't report to Windows (VLC 3, MPC-HC, PotPlayer, Winamp…) get t
 
 ## Install
 
-1. Install the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) if you don't have it.
-2. Download `Tempo.exe` from the [latest release](https://github.com/JustSad42/Tempo/releases/latest) and put it in a folder you can write to, e.g. `%LOCALAPPDATA%\Programs\Tempo`.
-3. Run it once. It adds itself to Windows startup and the Start menu. Open **Tempo** from the Start menu any time to get to settings or quit.
+1. Download `Tempo.exe` from the [latest release](https://github.com/JustSad42/Tempo/releases/latest) and put it in a folder you can write to, e.g. `%LOCALAPPDATA%\Programs\Tempo`. It needs nothing else installed.
+2. Run it once. It adds itself to Windows startup and the Start menu. Open **Tempo** from the Start menu any time to get to settings or quit.
 
 Settings, history and stats are stored locally in `%APPDATA%\Tempo`. The only network requests are update checks to GitHub.
+
+## Build
+
+Rust on Windows, no other runtime. The pop-up and settings window are drawn with Direct2D in software, so no graphics driver is loaded.
+
+```powershell
+cargo test
+cargo build --release                      # target\release\tempo.exe
+cargo run -- --snapshot out                # pictures of the pop-up and settings with made-up tracks
+cargo run -- --dump sessions.json          # what Windows reports right now
+cargo test controls_a_real_session -- --ignored   # end-to-end, against its own media session (run on your desktop)
+```
+
+A test copy that can run next to the real one: set `TEMPO_INSTANCE=test` and `TEMPO_DATA_DIR=<folder>`; `TEMPO_NO_HOOK=1` leaves the keyboard alone, `TEMPO_TEST_CRASH_AFTER=<seconds>` checks the restart.
+
+| File | What |
+|---|---|
+| `main.rs`, `app.rs` | events, state, what each key and click does |
+| `logic.rs` | which app, key gestures, playback position (no Windows calls) |
+| `media.rs`, `apps.rs` | Windows media sessions, app names, icons, volume |
+| `hook.rs` | keyboard hook, its watchdog, players Windows can't see |
+| `popup.rs`, `settings_ui.rs`, `gfx.rs` | the two windows and drawing |
+| `config.rs`, `updater.rs`, `supervisor.rs`, `system.rs` | files, self-update, crash restart, Windows helpers |
+
+Version 2 is the Rust rewrite of the C# app. It reads the same settings, history and stats, and installed 1.x copies update to it like to any other release. Two things differ: screen readers can't read the settings window (it is drawn by the app; it works fully from the keyboard), and a crash leaves a line in `%APPDATA%\Tempo\log.txt` instead of a dump file.

@@ -1,5 +1,4 @@
-bin/
-obj/
+target/
 publish/
 publish-next/
 graphify-out/

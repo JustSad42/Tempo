@@ -15,16 +15,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check version matches tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $ver = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ($ver -ne $tag) { throw "Cargo.toml version $ver does not match tag $tag" }
+
+      - name: Test
+        run: cargo test --release --locked
 
       - name: Build
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart("v")
-          dotnet publish Tempo.csproj -c Release -r win-x64 --self-contained false `
-            -p:PublishSingleFile=true -p:Version=$version -o out
+          cargo build --release --locked
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item target/release/tempo.exe out/Tempo.exe
           $hash = (Get-FileHash out/Tempo.exe -Algorithm SHA256).Hash.ToLower()
           Set-Content out/Tempo.exe.sha256 "$hash  Tempo.exe" -NoNewline
 
