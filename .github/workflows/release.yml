@@ -43,5 +43,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # v2.0.0 is a rewrite whose media keys were never pressed on a real keyboard: installed copies only see it
+          # once it is marked "latest" by hand (Releases page, edit, untick pre-release).
+          $pre = @(if ("${{ github.ref_name }}" -eq "v2.0.0") { "--prerelease" })
           gh release create "${{ github.ref_name }}" out/Tempo.exe out/Tempo.exe.sha256 `
-            --title "Tempo ${{ github.ref_name }}" --notes-from-tag
+            --title "Tempo ${{ github.ref_name }}" --notes-from-tag @pre
